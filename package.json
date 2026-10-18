@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/AlexandreSampaioProg/LarDosVelhinhos#readme",
   "dependencies": {
+    "cors": "^2.8.6",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
     "pg": "^8.23.1"

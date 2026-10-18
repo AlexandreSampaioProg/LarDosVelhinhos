@@ -1,0 +1,12 @@
+### Listar todos os itens
+GET http://localhost:3000/itens
+
+### Cadastrar um novo item
+POST http://localhost:3000/itens
+Content-Type: application/json
+
+{
+  "nome": "Sofá 2 lugares",
+  "descricao": "Sofá de tecido, bom estado, cor bege",
+  "preco": 150.00
+}
