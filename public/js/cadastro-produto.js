@@ -1,23 +1,3 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <title>Brechó - Cadastro de Itens</title>
-</head>
-<body>
-  <h1>Cadastro de Itens do Brechó</h1>
-
-  <form id="formItem">
-    <label>Nome: <input type="text" id="nome" required></label><br><br>
-    <label>Descrição: <textarea id="descricao"></textarea></label><br><br>
-    <label>Preço: <input type="number" step="0.01" id="preco" required></label><br><br>
-    <button type="submit">Cadastrar</button>
-  </form>
-
-  <h2>Itens cadastrados</h2>
-  <ul id="listaItens"></ul>
-
-  <script>
     const form = document.getElementById('formItem');
     const lista = document.getElementById('listaItens');
 
@@ -52,7 +32,5 @@
       carregarItens();
     });
 
-    carregarItens();
-  </script>
-</body>
-</html>
+carregarItens();
+  
