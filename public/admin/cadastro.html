@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="UTF-8">
   <title>Brechó - Cadastro de Itens</title>
   <script src="../js/cadastro-produto.js" defer></script>
   <link rel="stylesheet" href="../css/cadastro.css">
 </head>
+
 <body>
   <h1>Cadastro de Itens do Brechó</h1>
+
+  <label for="fotos">Fotos (até 4)</label>
+  <input type="file" id="fotos" name="fotos" accept="image/*" multiple>
+  <div id="previa"></div>
+  <p id="mensagem"></p>
 
   <form id="formItem">
     <label>Nome: <input type="text" id="nome" required></label><br><br>
@@ -19,4 +26,5 @@
   <h2>Itens cadastrados</h2>
   <ul id="listaItens"></ul>
 </body>
+
 </html>

@@ -1,108 +1,153 @@
 const express = require('express');
-const router = express.Router();
-const pool = require('../db');
 const multer = require('multer');
+const pool = require('../db');
 const { salvarImagem, removerPastaDoItem } = require('../services/imagens');
+
+const router = express.Router();
+
+// ---------- Recebimento das fotos ----------
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB por foto
   fileFilter: (req, file, cb) => {
-    const permitidos = ['image/jpeg', 'image/png', 'image/webp'];
-    if (permitidos.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('TIPO_INVALIDO'));
-    }
+    const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+    if (tiposPermitidos.includes(file.mimetype)) return cb(null, true);
+    cb(new Error('TIPO_INVALIDO'));
   },
 });
 
+// Transforma os erros do multer em respostas JSON legíveis
 function receberFotos(req, res, next) {
   upload.array('fotos', 4)(req, res, (erro) => {
     if (!erro) return next();
 
-    if (erro instanceof multer.MulterError) {
-      const mensagens = {
-        LIMIT_FILE_SIZE: 'Cada foto pode ter no máximo 10 MB',
-        LIMIT_UNEXPECTED_FILE: 'Envie no máximo 4 fotos',
-      };
-      return res
-        .status(400)
-        .json({ erro: mensagens[erro.code] || 'Erro no envio das fotos' });
+    if (erro.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ erro: 'Cada foto pode ter no máximo 10 MB.' });
     }
-
+    if (erro.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({ erro: 'Envie no máximo 4 fotos.' });
+    }
     if (erro.message === 'TIPO_INVALIDO') {
-      return res.status(400).json({ erro: 'Use apenas fotos JPG, PNG ou WebP' });
+      return res.status(400).json({ erro: 'Use apenas fotos JPG, PNG ou WebP.' });
     }
 
-    next(erro);
+    console.error(erro);
+    res.status(500).json({ erro: 'Erro ao receber as fotos.' });
   });
 }
 
+// ---------- Apoio ----------
 
+// Monta os endereços das duas versões de uma foto
+function urlsDaImagem(itemId, arquivo) {
+  const base = `/uploads/itens/${itemId}/${arquivo}`;
+  return { thumb: `${base}-thumb.webp`, medio: `${base}-medio.webp` };
+}
 
-//POST /itens - Para cadastrar novo item
-// POST /itens - cadastrar um item, com até 4 fotos
+// ---------- Rotas ----------
+
+// Lista: cada item vem com a capa (ou null, se não tiver foto)
+router.get('/', async (req, res) => {
+  try {
+    const resultado = await pool.query(`
+      SELECT i.*, ic.arquivo AS capa
+      FROM item i
+      LEFT JOIN item_imagem ic ON ic.item_id = i.id AND ic.principal = true
+      ORDER BY i.id DESC
+    `);
+
+    const itens = resultado.rows.map(({ capa, ...item }) => ({
+      ...item,
+      capa: capa ? urlsDaImagem(item.id, capa) : null,
+    }));
+
+    res.json(itens);
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Erro ao listar os itens.' });
+  }
+});
+
+// Um item com todas as fotos
+router.get('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ erro: 'Id inválido.' });
+  }
+
+  try {
+    const item = await pool.query('SELECT * FROM item WHERE id = $1', [id]);
+    if (item.rows.length === 0) {
+      return res.status(404).json({ erro: 'Item não encontrado.' });
+    }
+
+    const imagens = await pool.query(
+      'SELECT arquivo, principal FROM item_imagem WHERE item_id = $1 ORDER BY ordem',
+      [id]
+    );
+
+    res.json({
+      ...item.rows[0],
+      imagens: imagens.rows.map((img) => ({
+        ...urlsDaImagem(id, img.arquivo),
+        principal: img.principal,
+      })),
+    });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Erro ao buscar o item.' });
+  }
+});
+
+// Cadastro: item + fotos, tudo ou nada
 router.post('/', receberFotos, async (req, res) => {
-  const { nome, preco } = req.body;
-  const descricao = req.body.descricao || '';
+  const { nome, descricao } = req.body;
+  const preco = Number(req.body.preco);
+
+  if (!nome || !nome.trim() || nome.length > 30 || !Number.isFinite(preco) || preco < 0) {
+    return res.status(400).json({ erro: 'Nome (até 30 caracteres) e preço são obrigatórios.' });
+  }
+
   const fotos = req.files || [];
-
-  if (!nome || !preco) {
-    return res.status(400).json({ erro: 'Nome e preço são obrigatórios' });
-  }
-  if (nome.length > 30) {
-    return res.status(400).json({ erro: 'O nome pode ter no máximo 30 caracteres' });
-  }
-  if (!Number.isFinite(Number(preco)) || Number(preco) < 0) {
-    return res.status(400).json({ erro: 'Preço inválido' });
-  }
-
   const client = await pool.connect();
   let itemId = null;
 
   try {
     await client.query('BEGIN');
 
-    const itemResultado = await client.query(
+    const novoItem = await client.query(
       'INSERT INTO item (nome, descricao, preco) VALUES ($1, $2, $3) RETURNING *',
-      [nome, descricao, preco]
+      [nome.trim(), descricao || '', preco]
     );
-    const item = itemResultado.rows[0];
+    const item = novoItem.rows[0];
     itemId = item.id;
 
     const imagens = [];
     for (let i = 0; i < fotos.length; i++) {
       const arquivo = await salvarImagem(fotos[i].buffer, fotos[i].mimetype, itemId);
-
-      const imagemResultado = await client.query(
+      const nova = await client.query(
         `INSERT INTO item_imagem (item_id, arquivo, ordem, principal)
          VALUES ($1, $2, $3, $4) RETURNING *`,
-        [itemId, arquivo, i, i === 0]
+        [itemId, arquivo, i, i === 0] // a primeira foto é a capa
       );
-      imagens.push(imagemResultado.rows[0]);
+      imagens.push(nova.rows[0]);
     }
 
     await client.query('COMMIT');
     res.status(201).json({ ...item, imagens });
   } catch (erro) {
     await client.query('ROLLBACK').catch(() => {});
-    if (itemId) await removerPastaDoItem(itemId);
+    if (itemId) await removerPastaDoItem(itemId); // não deixa fotos órfãs no disco
+
+    if (erro.code === 'IMAGEM_INVALIDA') {
+      return res.status(400).json({ erro: erro.message });
+    }
+
     console.error(erro);
-    res.status(500).json({ erro: 'Erro ao cadastrar item' });
+    res.status(500).json({ erro: 'Erro ao cadastrar o item.' });
   } finally {
     client.release();
-  }
-});
-
-// GET /itens - Para listar todos os itens
-router.get('/', async (req, res) => {
-  try {
-    const resultado = await pool.query('SELECT * FROM item ORDER BY id DESC');
-    res.json(resultado.rows);
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: 'Erro ao buscar itens' });
   }
 });
 
