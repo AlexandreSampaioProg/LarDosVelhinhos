@@ -10,3 +10,43 @@ Content-Type: application/json
   "descricao": "Sofá de tecido, bom estado, cor bege",
   "preco": 150.00
 }
+
+### Cadastrar item com foto
+POST http://localhost:3000/itens
+Content-Type: multipart/form-data; boundary=----fronteira
+
+------fronteira
+Content-Disposition: form-data; name="nome"
+
+Poltrona azul
+------fronteira
+Content-Disposition: form-data; name="descricao"
+
+Poltrona em bom estado
+------fronteira
+Content-Disposition: form-data; name="preco"
+
+80.00
+------fronteira
+Content-Disposition: form-data; name="fotos"; filename="foto1.jpg"
+Content-Type: image/jpeg
+
+< ../public/img/a.jpg
+------fronteira
+Content-Disposition: form-data; name="fotos"; filename="foto2.jpg"
+Content-Type: image/jpeg
+
+< ../public/img/a.jpg
+
+------fronteira
+Content-Disposition: form-data; name="fotos"; filename="foto2.jpg"
+Content-Type: image/jpeg
+
+< ../public/img/a.jpg
+
+------fronteira
+Content-Disposition: form-data; name="fotos"; filename="foto2.jpg"
+Content-Type: 
+
+< ../public/img/a.jpg
+------fronteira--
