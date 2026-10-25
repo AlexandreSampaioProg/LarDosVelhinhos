@@ -9,6 +9,12 @@ const infoLista = document.getElementById('infoLista');
 const botaoMais = document.getElementById('maisItens'); 
 const POR_PAGINA = 20; 
 
+let todosItens = [];   // todos os itens que o servidor devolveu
+let exibidos = 0;      // quantos já aparecem na grade
+let carregando = false; // evita cliques repetidos enquanto busca as fotos
+
+
+
 function criarCarrossel(fotos, nome) {
   const caixa = document.createElement('div');
   caixa.className = 'carrossel';
@@ -102,23 +108,57 @@ async function buscarFotos(item) {
   }
 }
 
+function atualizarRodape() {
+  const faltam = todosItens.length - exibidos;
+  infoLista.textContent = `Mostrando ${exibidos} de ${todosItens.length} produtos`;
+  botaoMais.hidden = faltam <= 0;
+  botaoMais.disabled = false;
+  botaoMais.textContent = `Mais produtos (+${Math.min(POR_PAGINA, faltam)})`;
+}
+
+async function mostrarMais() {
+  if (carregando) return;
+  carregando = true;
+  botaoMais.disabled = true;
+  botaoMais.textContent = 'Carregando...';
+
+  // só os próximos 20, a partir de onde parou
+  const lote = todosItens.slice(exibidos, exibidos + POR_PAGINA);
+
+  // busca as fotos só desses itens, ao mesmo tempo
+  const fotosDoLote = await Promise.all(lote.map(buscarFotos));
+
+  lote.forEach((item, i) => {
+    lista.appendChild(criarCartao(item, fotosDoLote[i]));
+  });
+
+  exibidos += lote.length;
+  carregando = false;
+  atualizarRodape();
+}
+
 async function carregarItens() {
   try {
     const resposta = await fetch(API);
     if (!resposta.ok) throw new Error('Servidor respondeu ' + resposta.status);
-    const itens = await resposta.json();
+    todosItens = await resposta.json();
 
-    // busca as fotos de todos os itens de uma vez
-    const fotosDosItens = await Promise.all(itens.map(buscarFotos));
-
+    exibidos = 0;
+    carregando = false;
     lista.replaceChildren();
     infoLista.textContent = '';
 
-    itens.forEach((item, i) => {
-      lista.appendChild(criarCartao(item, fotosDosItens[i]));
-    });
+    if (todosItens.length === 0) {
+      infoLista.textContent = 'Nenhum item cadastrado ainda.';
+      botaoMais.hidden = true;
+      return;
+    }
+
+    await mostrarMais(); // desenha só os 20 primeiros
   } catch (erro) {
     console.error(erro);
+    lista.replaceChildren();
+    botaoMais.hidden = true;
     infoLista.textContent = 'Não foi possível carregar a lista.';
   }
 }
@@ -174,4 +214,5 @@ form.addEventListener('submit', async (evento) => {
   }
 });
 
+botaoMais.addEventListener('click', mostrarMais);
 carregarItens();

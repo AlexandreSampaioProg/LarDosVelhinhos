@@ -141,3 +141,15 @@ label textarea:focus {
     color: #fff;
     font-size: 12px;
 }
+
+#infoLista { color: #0370b8; }
+
+#maisItens {
+    margin: 10px auto 30px;
+    padding: 10px 24px;
+}
+
+#maisItens:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
