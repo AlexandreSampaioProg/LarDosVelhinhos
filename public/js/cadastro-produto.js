@@ -4,39 +4,122 @@ const form = document.getElementById('formItem');
 const inputFotos = document.getElementById('fotos');
 const previa = document.getElementById('previa');
 const mensagem = document.getElementById('mensagem');
-
 const lista = document.getElementById('listaItens');
+const infoLista = document.getElementById('infoLista');
+const botaoMais = document.getElementById('maisItens'); 
+const POR_PAGINA = 20; 
+
+function criarCarrossel(fotos, nome) {
+  const caixa = document.createElement('div');
+  caixa.className = 'carrossel';
+
+  // sem foto: só uma caixa com o aviso
+  if (fotos.length === 0) {
+    caixa.classList.add('sem-foto');
+    caixa.textContent = 'Sem foto';
+    return caixa;
+  }
+
+  let atual = 0; // índice da foto que está aparecendo
+
+  const img = document.createElement('img');
+  img.className = 'carrossel-foto';
+  img.loading = 'lazy';
+  caixa.appendChild(img);
+
+  const contador = document.createElement('span');
+  contador.className = 'carrossel-contador';
+
+  function mostrar() {
+    img.src = fotos[atual];
+    img.alt = `Foto ${atual + 1} de ${fotos.length} - ${nome}`;
+    contador.textContent = `${atual + 1}/${fotos.length}`;
+  }
+
+  // com uma foto só não há o que navegar: sem setas
+  if (fotos.length > 1) {
+    const anterior = document.createElement('button');
+    anterior.type = 'button';
+    anterior.className = 'seta anterior';
+    anterior.textContent = '‹';
+    anterior.setAttribute('aria-label', 'Foto anterior');
+    anterior.addEventListener('click', () => {
+      atual = (atual - 1 + fotos.length) % fotos.length;
+      mostrar();
+    });
+
+    const proxima = document.createElement('button');
+    proxima.type = 'button';
+    proxima.className = 'seta proxima';
+    proxima.textContent = '›';
+    proxima.setAttribute('aria-label', 'Próxima foto');
+    proxima.addEventListener('click', () => {
+      atual = (atual + 1) % fotos.length;
+      mostrar();
+    });
+
+    caixa.append(anterior, proxima, contador);
+  }
+
+  mostrar();
+  return caixa;
+}
+
+
+// Monta o cartão de um produto (por enquanto mostra só a primeira foto)
+function criarCartao(item, fotos) {
+  const cartao = document.createElement('li');
+  cartao.className = 'cartao';
+
+cartao.appendChild(criarCarrossel(fotos, item.nome));
+
+  const nome = document.createElement('strong');
+  nome.textContent = item.nome;
+
+  const preco = document.createElement('div');
+  preco.textContent = Number(item.preco).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+
+  const descricao = document.createElement('div');
+  descricao.textContent = item.descricao || '';
+
+  cartao.append(nome, preco, descricao);
+  return cartao;
+}
+
+// Busca todas as fotos de um item (GET /itens/:id) e devolve um array de endereços
+async function buscarFotos(item) {
+  try {
+    const resposta = await fetch(`${API}/${item.id}`);
+    if (!resposta.ok) throw new Error('Servidor respondeu ' + resposta.status);
+    const completo = await resposta.json();
+    return completo.imagens.map((img) => SERVIDOR + img.medio);
+  } catch (erro) {
+    console.error(erro);
+    return item.capa ? [SERVIDOR + item.capa.medio] : [];
+  }
+}
 
 async function carregarItens() {
   try {
     const resposta = await fetch(API);
+    if (!resposta.ok) throw new Error('Servidor respondeu ' + resposta.status);
     const itens = await resposta.json();
 
-    lista.innerHTML = '';
-    for (const item of itens) {
-      const elemento = document.createElement(lista.tagName === 'UL' ? 'li' : 'div');
+    // busca as fotos de todos os itens de uma vez
+    const fotosDosItens = await Promise.all(itens.map(buscarFotos));
 
-      if (item.capa) {
-        const img = document.createElement('img');
-        img.src = SERVIDOR + item.capa.thumb;
-        img.alt = `Foto de ${item.nome}`;
-        img.loading = 'lazy'; // só baixa quando a foto chega perto da tela
-        img.width = 100;
-        elemento.appendChild(img);
-      }
+    lista.replaceChildren();
+    infoLista.textContent = '';
 
-      const preco = Number(item.preco).toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-      });
-      const texto = document.createElement('span');
-      texto.textContent = `${item.nome} - ${preco} - ${item.descricao}`;
-      elemento.appendChild(texto);
-
-      lista.appendChild(elemento);
-    }
+    itens.forEach((item, i) => {
+      lista.appendChild(criarCartao(item, fotosDosItens[i]));
+    });
   } catch (erro) {
-    lista.textContent = 'Não foi possível carregar a lista.';
+    console.error(erro);
+    infoLista.textContent = 'Não foi possível carregar a lista.';
   }
 }
 
@@ -85,10 +168,10 @@ form.addEventListener('submit', async (evento) => {
     form.reset();
     previa.innerHTML = '';
     mensagem.textContent = 'Item cadastrado!';
-    // chame aqui a função que recarrega a lista de itens, se você tiver uma
+    carregarItens(); // recarrega a lista: o item novo aparece primeiro
   } catch (erro) {
     mensagem.textContent = 'Servidor fora do ar. Tente de novo.';
   }
 });
 
-carregarItens(); // chama aqui a função que recarrega a lista de itens, se você tiver uma
+carregarItens();

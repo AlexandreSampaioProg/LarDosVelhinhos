@@ -64,3 +64,80 @@ label textarea:focus {
     outline: none;
     border: 1px solid #e6dfd3;
 }
+
+[hidden] { display: none !important; }
+
+#listaItens {
+    list-style: none;
+    padding: 0;
+    margin: 0 auto;
+    max-width: 1200px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+}
+
+.cartao {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.cartao * { background-color: transparent; }
+.cartao img { width: 100%; }
+
+.carrossel {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #eee;
+    margin-bottom: 8px;
+}
+
+.carrossel-foto {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.carrossel.sem-foto {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #777;
+}
+
+.carrossel .seta {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 20px;
+    line-height: 30px;
+}
+
+.carrossel .seta.anterior { left: 6px; }
+.carrossel .seta.proxima { right: 6px; }
+
+.carrossel .carrossel-contador {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background-color: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 12px;
+}
