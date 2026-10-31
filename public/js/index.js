@@ -6,8 +6,9 @@ const vitrine = document.getElementById('vitrine');
 const aviso = document.getElementById('aviso');
 const botaoMais = document.getElementById('maisProdutos');
 
-let todosItens = []; // tudo o que veio do servidor
-let exibidos = 0;    // quantos já estão na tela
+let todosItens = [];
+let itensOriginais = [];
+let exibidos = 0;
 
 function formatarPreco(valor) {
   return Number(valor).toLocaleString('pt-BR', {
@@ -16,7 +17,6 @@ function formatarPreco(valor) {
   });
 }
 
-// Descrição curta: corta em 80 caracteres e acrescenta "…" só se cortou
 function resumir(texto, limite = 80) {
   const limpo = (texto || '').trim();
   if (limpo.length <= limite) return limpo;
@@ -24,7 +24,6 @@ function resumir(texto, limite = 80) {
 }
 
 function criarCard(item) {
-  // o card inteiro é um link: clique, botão do meio e "abrir em nova aba" funcionam
   const card = document.createElement('a');
   card.className = 'card';
   card.href = 'produto.html?id=' + item.id;
@@ -34,9 +33,9 @@ function criarCard(item) {
 
   if (item.capa) {
     const img = document.createElement('img');
-    img.src = SERVIDOR + item.capa.thumb; // só a versão pequena (400 px)
+    img.src = SERVIDOR + item.capa.thumb;
     img.alt = 'Foto de ' + item.nome;
-    img.width = 400;   // tamanhos reservam o espaço e evitam a página "pulando"
+    img.width = 400;
     img.height = 400;
     img.loading = 'lazy';
     img.decoding = 'async';
@@ -51,7 +50,7 @@ function criarCard(item) {
 
   const nome = document.createElement('h3');
   nome.className = 'card-nome';
-  nome.textContent = item.nome; // textContent: nada do usuário vira HTML
+  nome.textContent = item.nome;
 
   const descricao = document.createElement('p');
   descricao.className = 'card-descricao';
@@ -72,7 +71,6 @@ function atualizarRodape() {
   botaoMais.textContent = `Mais produtos (+${Math.min(POR_PAGINA, faltam)})`;
 }
 
-// Os dados já estão na memória: mostrar mais não faz nenhuma requisição nova
 function mostrarMais() {
   const lote = todosItens.slice(exibidos, exibidos + POR_PAGINA);
   for (const item of lote) {
@@ -85,9 +83,10 @@ function mostrarMais() {
 async function carregarVitrine() {
   aviso.textContent = 'Carregando produtos...';
   try {
-    const resposta = await fetch(API); // uma única requisição
+    const resposta = await fetch(API);
     if (!resposta.ok) throw new Error('Servidor respondeu ' + resposta.status);
     todosItens = await resposta.json();
+    itensOriginais = [...todosItens];
 
     aviso.textContent = '';
     if (todosItens.length === 0) {
@@ -103,3 +102,23 @@ async function carregarVitrine() {
 
 botaoMais.addEventListener('click', mostrarMais);
 carregarVitrine();
+
+const inputBusca = document.querySelector('input');
+if (inputBusca) {
+  inputBusca.addEventListener('input', (e) => {
+    const termo = e.target.value.toLowerCase().trim();
+    todosItens = itensOriginais.filter(item => 
+      item.nome.toLowerCase().includes(termo) || 
+      (item.descricao && item.descricao.toLowerCase().includes(termo))
+    );
+    vitrine.innerHTML = '';
+    exibidos = 0;
+    if (todosItens.length === 0) {
+      aviso.textContent = 'Nenhum produto encontrado.';
+      botaoMais.hidden = true;
+    } else {
+      aviso.textContent = '';
+      mostrarMais();
+    }
+  });
+}
