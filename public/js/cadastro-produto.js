@@ -91,8 +91,36 @@ cartao.appendChild(criarCarrossel(fotos, item.nome));
   const descricao = document.createElement('div');
   descricao.textContent = item.descricao || '';
 
-  cartao.append(nome, preco, descricao);
+  const botaoExcluir = document.createElement('button');
+  botaoExcluir.type = 'button';
+  botaoExcluir.textContent = 'Excluir';
+  botaoExcluir.addEventListener('click', () => excluirItem(item, cartao, botaoExcluir));
+
+  cartao.append(nome, preco, descricao, botaoExcluir);
   return cartao;
+}
+
+// Pede confirmação, manda DELETE /itens/:id e tira o cartão da tela
+async function excluirItem(item, cartao, botao) {
+  if (!confirm(`Excluir "${item.nome}"? Essa ação não pode ser desfeita.`)) return;
+
+  botao.disabled = true;
+  try {
+    const resposta = await fetch(`${API}/${item.id}`, { method: 'DELETE' });
+    if (!resposta.ok && resposta.status !== 404) {
+      throw new Error('Servidor respondeu ' + resposta.status);
+    }
+
+    cartao.remove();
+    todosItens = todosItens.filter((i) => i.id !== item.id);
+    exibidos--;
+    atualizarRodape();
+    mensagem.textContent = `"${item.nome}" excluído.`;
+  } catch (erro) {
+    console.error(erro);
+    botao.disabled = false;
+    mensagem.textContent = 'Não foi possível excluir. Tente de novo.';
+  }
 }
 
 // Busca todas as fotos de um item (GET /itens/:id) e devolve um array de endereços

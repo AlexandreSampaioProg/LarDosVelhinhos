@@ -151,4 +151,30 @@ router.post('/', receberFotos, async (req, res) => {
   }
 });
 
+// Exclusão: apaga o item (as fotos no banco somem pelo ON DELETE CASCADE)
+router.delete('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ erro: 'Id inválido.' });
+  }
+
+  try {
+    const resultado = await pool.query(
+      'DELETE FROM item WHERE id = $1 RETURNING id',
+      [id]
+    );
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ erro: 'Item não encontrado.' });
+    }
+
+    // Banco já limpo; agora apaga os arquivos de foto do disco
+    await removerPastaDoItem(id).catch((erro) => console.error(erro));
+
+    res.status(204).end(); // 204 = deu certo, sem conteúdo na resposta
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Erro ao excluir o item.' });
+  }
+});
+
 module.exports = router;
