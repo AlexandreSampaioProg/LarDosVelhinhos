@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Produto - Brechó Lar dos Velhinhos</title>
+  <!-- TODO (alunos): criar e ligar o CSS desta página, ex.: ./css/produto.css -->
+  <script src="./js/produto.js" defer></script>
+</head>
+
+<body>
+  <header>
+    <a href="index.html">&larr; Voltar para a vitrine</a>
+  </header>
+
+  <main>
+    <p id="aviso" role="status">Carregando produto...</p>
+
+    <article id="produto" hidden>
+      <section id="fotos">
+        <img id="foto-principal" src="" alt="">
+        <div id="miniaturas"></div>
+      </section>
+
+      <section id="info">
+        <h1 id="nome"></h1>
+        <p id="preco"></p>
+        <p id="descricao"></p>
+        <button type="button" id="botao-comprar">Comprar</button>
+      </section>
+    </article>
+  </main>
+</body>
+
+</html>
